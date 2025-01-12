@@ -96,17 +96,21 @@ if st.button("Analyze"):
                     st.error(f"Error during LIME analysis: {str(e)}")
 
         elif analysis_type == "Where (GradCAM+Mobile-Net-V2-FineTune)":
+                image_clone = image
                 image = image.resize((224,224))
                 image_array = np.array(image) / 255.0
                 image_array = np.expand_dims(image_array, axis=0)
 
                 with st.spinner("Analyzing with Multiple Grad-CAMs..."):
-                    predictions = st.session_state.vgg_model.predict(image_array)
+                    image_clone = image_clone.resize(st.session_state.resized_size_vgg)
+                    image_clone_array = np.array(image_clone) / 255.0
+                    image_clone_array = np.expand_dims(image_clone_array, axis=0)
+                    predictions = st.session_state.vgg_model.predict(image_clone_array)
                     prediction_confidences = [float(value) for value in predictions[0]]
                     target_class = np.argmax(predictions[0])
                     target_class_confidence = prediction_confidences[target_class]
                     st.markdown(
-                        "**Chest X-Ray Pneumonia Prediction:** " + str("NORMAL" if target_class < 0.5 else "PNEUMONIA"))
+                        "**Chest X-Ray Pneumonia Prediction:** " + str("NORMAL" if target_class == 0 else "PNEUMONIA"))
                     st.markdown("**Prediction Confidence:** " + str(round(target_class_confidence, 4)))
                     heatmap_explain = generate_grad_cam_explain(
                         image_array, st.session_state.mobilenet_model, st.session_state.layer_name_mobilenet
@@ -134,13 +138,14 @@ if st.button("Analyze"):
             with st.spinner("Analyzing with Counterfactuals..."):
                 try:
                     original_predictions = st.session_state.vgg_model(image_array)
-                    target_proba = 1 - original_predictions[0, 0]  # Generate counterfactual for opposite class
-                    st.markdown(f"**Original Prediction:** {'NORMAL' if original_predictions[0, 0] < 0.5 else 'PNEUMONIA'}")
-                    counterfactual_image = simulate_counterfactual(image_array, st.session_state.vgg_model, target_proba)
+                    target_class = np.argmax(original_predictions[0])  # Generate counterfactual for opposite class
+                    st.markdown(f"**Original Prediction:** {'NORMAL' if target_class < 0.5 else 'PNEUMONIA'}")
+                    counterfactual_image = simulate_counterfactual(image_array, st.session_state.vgg_model, target_class)
                     counterfactual_image = smooth_image(counterfactual_image, sigma=0.5)
                     try:
                         pred_cf = st.session_state.vgg_model(counterfactual_image)
-                        st.markdown("**Counterfactual Prediction:** " + str("NORMAL" if pred_cf[0,0] < 0.5 else "PNEUMONIA"))
+                        target_class_cf = np.argmax(pred_cf[0])
+                        st.markdown("**Counterfactual Prediction:** " + str("NORMAL" if target_class_cf < 0.5 else "PNEUMONIA"))
                     except:
                         st.text("")
                     col1, col2 = st.columns(2)
