@@ -3,8 +3,7 @@
 git clone https://github.com/Koukotsukan/Assignment-Chest-Pneumonia-Detection-XAI.git
 cd Assignment-Chest-Pneumonia-Detection-XAI/
 conda create --name assignment_xai_niuzhaohang --file requirements.txt
-```
-```python
+conda activate assignment_xai_niuzhaohang
 streamlit run app.py
 ```
 ## Requirement (basic main conda env)
